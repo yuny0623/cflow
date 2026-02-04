@@ -16,6 +16,23 @@
 /.aswb/
 /.clwb/
 
+### ignore except C file ### 
+## 1. 기본적으로 전부 무시
+*
+
+# 2. 디렉토리는 탐색 가능하게 허용
+!*/
+
+# 3. C 소스 파일만 허용
+!*.c
+
+# (선택) 헤더도 허용하고 싶으면
+ !*.h
+
+# (선택) README 허용
+!README.md
+
+
 ### C ###
 # Prerequisites
 *.d
