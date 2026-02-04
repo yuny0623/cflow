@@ -20,9 +20,22 @@
  * at first, just use it int CLI, no dashboard, no web console, just a CLI tooling 
  */
 
-#include<stdio.h>
+#include <stdio.h>
+#include <pthread.h>
+#include "cli.h"
 
 int main() { 
 	fprintf(stdout, "cflow start\n"); 
+	
+	pthread_t cli_thread; 
+	int ret = pthread_create(&cli_thread, NULL, cli_input_receiver, NULL); 
+	if (ret == -1) {
+		perror("pthread_create"); 
+		return 1; 
+	}
+
+	// Wait cli_thread to exit 
+	pthread_join(cli_thread, NULL);
+	fprintf(stdout, "cflow exit\n"); 
 	return 0; 
 }
