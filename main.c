@@ -22,20 +22,44 @@
 
 #include <stdio.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include "cli.h"
+#include "scheduler.h" 
+#include "dag.h"
 
 int main() { 
 	fprintf(stdout, "cflow start\n"); 
 	
+	// start CLI thread 
 	pthread_t cli_thread; 
 	int ret = pthread_create(&cli_thread, NULL, cli_input_receiver, NULL); 
 	if (ret == -1) {
 		perror("pthread_create"); 
 		return 1; 
 	}
+	fprintf(stdout, "cli_thread started\n");
+
+	// start scheduler thread 
+	pthread_t sched_thread; 
+	ret = pthread_create(&sched_thread, NULL, sched_executor, NULL); 
+	if (ret == -1) {
+		perror("pthread_create");
+		return 1; 
+	}
+	fprintf(stdout, "sched_thread started\n"); 
+
+	// prepare DAG, read, load DAG
+	struct dag_order* ord = read_dag_dsl(); 
+	if (ord == NULL) {
+		fprintf(stderr, "read_dag_dsl has been failed\n");
+		exit(EXIT_FAILURE); 
+	}
+
 
 	// Wait cli_thread to exit 
 	pthread_join(cli_thread, NULL);
+	pthread_join(sched_thread, NULL); 
+
 	fprintf(stdout, "cflow exit\n"); 
 	return 0; 
 }

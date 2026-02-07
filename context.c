@@ -8,14 +8,19 @@
 #include<stdio.h>
 #include<stdbool.h>
 #include<memory.h>
+#include<unistd.h>
+#include<fcntl.h>
 #include<time.h> // <-- for ctx creation time 
 #include<string.h>
+#include<stdlib.h>
+#include<errno.h>
+#include"context.h"
 
-#define INITIAL_CTX_ENT_CAPACITY 100;  // initial size is set to 100, how can we expand this capacity... need more consideration 
+#define INITIAL_CTX_ENT_CAPACITY 100  // initial size is set to 100, how can we expand this capacity... need more consideration 
 
 typedef enum { 
-	CTX_MEMORY_MODE = 1; 
-	CTX_FILE_MODE = 1; 
+	CTX_MEMORY_MODE = 1, // no semicolon here, use comma  
+	CTX_FILE_MODE = 2,  
 } CtxMode; 
 
 struct Entry {
@@ -24,7 +29,7 @@ struct Entry {
 	int int_val; 
 	double double_val; 
 	char* memo;       	// memo 
-}
+}; // struct decleration needs semicolon 
 
 struct Context {  
 	int mode; // CTX_MEMORY_MODE, CTX_FILE_MODE, 
@@ -34,11 +39,16 @@ struct Context {
 	double updated_at; 
 
 	// array of CtxEntry pointer 
-	CtxEntry* entries[]; // it is good to locate VLA in the end of struct  
+	struct Entry* entries[]; // it is good to locate VLA in the end of struct  
 }; 
 
-Context* create_ctx(int mode) { 
-	Context* ctx; 
+
+static struct Context* create_mem_ctx(); 
+static int create_fs_ctx(); 
+struct Entry* ctx_get(struct Context* ctx, const char* key, int capacity); 
+
+struct Context* create_ctx(int mode) { 
+	struct Context* ctx; 
 
 	switch (mode) {
 		case CTX_MEMORY_MODE: 
@@ -59,12 +69,12 @@ Context* create_ctx(int mode) {
 static int64_t get_creation_time() { 
 	struct timespec ts; 
 	clock_gettime(CLOCK_REALTIME, &ts); 
-	int64_t epoch_millsec = (int64_t) ts.tv_sec * 1000 + (int64_t) ts.tv_usec * 1000000;
+	int64_t epoch_millsec = (int64_t) ts.tv_sec * 1000 + (int64_t) ts.tv_nsec * 1000000; // tv_nsec <-- nano second 
        	return epoch_millsec; 	
 }
 
 
-static void init_ctx(Context* ctx) {
+static void init_ctx(struct Context* ctx) {
 	fprintf(stdout, "init ctx\n"); 
 	int64_t curr_epoch_millsec = get_creation_time(); 
 	ctx->capacity = INITIAL_CTX_ENT_CAPACITY; 
@@ -73,9 +83,9 @@ static void init_ctx(Context* ctx) {
 }
 
 // create ctx using memory, returns pointer of Context
-static Context* create_mem_ctx() { 
+static struct Context* create_mem_ctx() { 
 	fprintf(stdout, "create mem ctx\n"); 
-	Context * ctx = calloc(1, sizeof(Context) + sizeof(Entry) * INITIAL_CTX_ENT_CAPACITY);
+	struct Context * ctx = calloc(1, sizeof(struct Context) + (sizeof(struct Entry) * INITIAL_CTX_ENT_CAPACITY));
 	init_ctx(ctx);  // initialize ctx 
 
 	if (ctx == NULL) {
@@ -99,18 +109,18 @@ static int create_fs_ctx() {
 	return fd; 
 }
 
-int ctx_ent_put(Context* ctx, Entry ent, const char* key) { 
-	Entry * new_ent = calloc(1, sizeof(Entry));
-	if (ent == NULL) {
+int ctx_ent_put(struct Context* ctx, struct Entry ent, const char* key) { 
+	struct Entry * new_ent = calloc(1, sizeof(struct Entry));
+	if (new_ent == NULL) {
 		perror("calloc"); 
 		return -1;
 	}
 
-	new_ent.key = ent.key;
-	new_ent.str_val = ent.str_val; 
-	new_ent.int_val = ent.int_val; 
-	new_ent.double_val = ent.double_val; 
-	new_ent.memo = ent.memo; 
+	new_ent->key = ent.key;
+	new_ent->str_val = ent.str_val; 
+	new_ent->int_val = ent.int_val; 
+	new_ent->double_val = ent.double_val; 
+	new_ent->memo = ent.memo; 
 
 	ctx->entries[ctx->capacity] = new_ent; 
 
@@ -118,30 +128,26 @@ int ctx_ent_put(Context* ctx, Entry ent, const char* key) {
 	return 0; 
 }
 
-void ctx_ent_del(Context* ctx, const char* key) { 
-	Entry* ent = ctx_get(ctx, key); 
+void ctx_ent_del(struct Context* ctx, const char* key) { 
+	struct Entry* ent = ctx_get(ctx, key, INITIAL_CTX_ENT_CAPACITY); 
 	free(ent); 
 	fprintf(stdout, "ctx ent del: %s\n", key); 
 }
 
 
 // we need to improve this get mechanism, what about key hashing ? 
-Entry* ctx_get(Context* ctx, const char* key, int capacity) { 	
-	Entry* entries = ctx->entries; 
-	for(int i = 0; i < capacity, i++) {
-		if(entries[i] == NULL) {
-			continue; 
-		}
-
+struct Entry* ctx_get(struct Context* ctx, const char* key, int capacity) { 	
+	struct Entry* entries = ctx->entries; 
+	for(int i = 0; i < capacity; i++) {
 		if (strcmp(entries[i].key, key) == 0) {
-			return entries[i]; 
+			return &entries[i]; 
 		}
 	}
 	
 	return NULL; 
 }
 
-int delete_context(Context* ctx) {
+int delete_context(struct Context* ctx) {
 	int retry = 0;
 	if (ctx->mode == CTX_MEMORY_MODE) {
 		free(ctx); 
@@ -152,7 +158,7 @@ int delete_context(Context* ctx) {
 			if (errno == EINTR) {
 				retry += 1; 
 				if (retry == 3) {
-					fprintf(stderr, "non recoverable problem occured with fd: %d\n", fd); 
+					fprintf(stderr, "non recoverable problem occured with fd: %d\n", ctx->fd); 
 					free(ctx); 
 					return -1; 
 				}

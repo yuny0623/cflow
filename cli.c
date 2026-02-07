@@ -7,7 +7,7 @@
 
 #define BUF_LEN 1024 // no semisolon after #define  
 
-static void parse_input(char* buf);
+static char* parse_input(char* buf);
 
 void* cli_input_receiver(void *arg) {
         (void) arg; 
@@ -25,12 +25,33 @@ void* cli_input_receiver(void *arg) {
 			}
 		}	
 
-		parse_input(buf); 
+		char* argv = parse_input(buf);
+	       	fprintf(stdout, "argv: %s\n", argv); 	
 		fprintf(stdout, "input: %s\n", buf); 
 	} 
 }
 
-static void parse_input(char* buf) { 
 
-	return; 
+void run_by_command(char* argv) {
+   // TODO("")
+}
+
+/**
+ * ## command ## 
+ * 1. run dag 
+ * 2. exit dag 
+ */ 
+static char* parse_input(char* buf) { 
+	char argv[BUF_LEN]; 
+	char* save; 
+	char* tok = strtok_r(buf, " ", &save); // strtok_r is thread-safe, so use this instead of strtok() 
+	
+	int idx = 0; 
+	while(tok) {
+		argv[idx++] = tok; 
+		tok = strtok_r(NULL, " ", &save); 
+	}
+
+	fprintf(stdout, "parse input finish\n"); 
+	return argv;  
 }
