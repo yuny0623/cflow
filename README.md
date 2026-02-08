@@ -8,3 +8,15 @@ just for fun.
 
 ## commit convention 
 - just simply use feat,fix,refactor,doc 
+
+
+
+## Role 
+- Schedulder
+- - handle all the execution of workflow, and also resource management. 
+- Dag
+- - handle the execution order of tasks, which forms DAG(Direct Acyclic Graph)
+- Context
+- - maintain small chunk of data between tasks. 
+- Task 
+- - A single unit of execution -> one function 

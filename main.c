@@ -39,22 +39,21 @@ int main() {
 	}
 	fprintf(stdout, "cli_thread started\n");
 
-	// start scheduler thread 
-	pthread_t sched_thread; 
-	ret = pthread_create(&sched_thread, NULL, sched_executor, NULL); 
-	if (ret == -1) {
-		perror("pthread_create");
-		return 1; 
-	}
-	fprintf(stdout, "sched_thread started\n"); 
 
-	// prepare DAG, read, load DAG
 	struct dag_order* ord = read_dag_dsl(); 
 	if (ord == NULL) {
 		fprintf(stderr, "read_dag_dsl has been failed\n");
 		exit(EXIT_FAILURE); 
 	}
 
+	// start scheduler thread 
+	pthread_t sched_thread; 
+	ret = pthread_create(&sched_thread, NULL, sched_executor, ord); 
+	if (ret == -1) {
+		perror("pthread_create");
+		return 1; 
+	}
+	fprintf(stdout, "sched_thread started\n"); 
 
 	// Wait cli_thread to exit 
 	pthread_join(cli_thread, NULL);

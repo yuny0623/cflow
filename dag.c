@@ -17,9 +17,17 @@
 
 #define BUF_LEN 1024 
 
+// at first it only provides fixed schedule, consider to provider cron expression like function 
+typedef enum {
+	HOURLY, 
+	DAILY, 
+} dag_schedule; 
+
+
 struct dag_order {
-	struct dag_order * next; 
-	const char* func_name; 
+	struct dag_order * next; // next order info   
+	const char* func_name;   // next execution function_name 
+        dag_schedule schedule; 
 }; 
 
 
