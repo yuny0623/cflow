@@ -13,6 +13,16 @@
 #include<unistd.h>
 #include<sys/wait.h>
 
+char* make_py_file_name(char* name) { 
+    char py_extension[] = ".py"; 
+    char arr[64]; 
+    strcpy(arr, name);
+    
+    strcat(arr, py_extension);
+    char* full_file_name = strdup(arr); 
+    return full_file_name; 
+}
+
 // fork() -> execlp() -> waitpid() 
 int execute_task(const char* name) { 
     fprintf(stdout, "start execute task - name: %s\n", name);
@@ -25,7 +35,9 @@ int execute_task(const char* name) {
 
     // child process 
     if (pid == 0) { 
-        execlp("python3", "python3", name, (char*) NULL); 
+        const char* file_name = make_py_file_name(name); 
+        fprintf(stdout, "file_name: %s\n", file_name); 
+        execlp("python3", "python3", file_name, (char*) NULL); 
         perror("execlp");
         _exit(127);
     }

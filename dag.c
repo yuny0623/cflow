@@ -117,6 +117,11 @@ void print_all_task(char tasks[][MAX_TASK_NAME_LEN], int count) {
 
 // use strtok 
 void* handle_multiple_task(const char* dsl, struct dag_order* ord) { 
+	if (ord == NULL) {
+		fprintf(stderr, "ord cannot be null\n");  
+		return NULL; 
+	}
+
 	fprintf(stdout, "handle_multiple_task called\n"); 
 	char tasks[MAX_TASK_COUNT][MAX_TASK_NAME_LEN]; 
 	int count = 0; 
@@ -141,18 +146,29 @@ void* handle_multiple_task(const char* dsl, struct dag_order* ord) {
 
 	fprintf(stdout, "count: %d\n", count); 
 	print_all_task(tasks, count); 
+	print_all_task(tasks, count);
+	print_all_task(tasks, count);
 
 	if (count <= 0) { 
-		return; 
+		return NULL; 
 	}
 
+	fprintf(stdout, "1\n"); 
+	fflush(stdout); 
 	struct dag_order* pointer = ord; 
-	pointer->func_name = strdup(trim(tasks[0])); 
+	pointer->func_name = strdup(tasks[0]); 
+	if (pointer->func_name == NULL) { 
+		perror("strdup");
+		return NULL; 
+	}
+
+	fprintf(stdout, "2\n");
+	fflush(stdout); 
 	pointer->next = NULL; 
 	pointer->schedule = DAILY; // first, use DAILY as default 
  
 	if (count <= 1) { 
-		return; 
+		return NULL; 
 	}
 
 	for (int i = 1; i < count; i++) { 
@@ -160,10 +176,12 @@ void* handle_multiple_task(const char* dsl, struct dag_order* ord) {
 		pointer->next = next; 
 		pointer = pointer->next; 
 		
-		pointer->func_name = strdup(trim(tasks[count]));
+		pointer->func_name = strdup(tasks[i]);
 		pointer->next = NULL; 
 		pointer->schedule = DAILY; 
 	}
 
 	fprintf(stdout, "finish handle_multiple_task\n"); 
+	fflush(stdout); 
+	return NULL; 
 }
