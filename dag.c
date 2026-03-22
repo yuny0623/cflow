@@ -3,33 +3,22 @@
  * and generates order of DAG(Direct Asyclic Graph) and give it to scheduler
  *
  * ## call order ## 
- *
- *
  */
 
 #include<stdio.h>
 #include<unistd.h>
 #include<fcntl.h>
-#include<string.h> // strlen, strstr 
+#include<string.h> // strlen, strstr, strdup 
 #include<memory.h> // memcpy 
 #include<stdlib.h> // <-- calloc 
 #include"dag.h"
 
 #define BUF_LEN 1024 
+#define MAX_TASK_COUNT 10 
+#define MAX_TASK_NAME_LEN 64       
 
-// at first it only provides fixed schedule, consider to provider cron expression like function 
-typedef enum {
-	HOURLY, 
-	DAILY, 
-} dag_schedule; 
-
-
-struct dag_order {
-	struct dag_order * next; // next order info   
-	const char* func_name;   // next execution function_name 
-        dag_schedule schedule; 
-}; 
-
+void* handle_single_task(const char* dsl, struct dag_order* ord); 
+void* handle_multiple_task(const char* dsl, struct dag_order* ord); 
 
 struct dag_order* read_dag_dsl() {
 	const char* dag_dsl_filename = "dag.dsl"; 
@@ -46,6 +35,8 @@ struct dag_order* read_dag_dsl() {
 		return NULL; 
 	}
 
+	fprintf(stdout, "DSL read buffer: %s\n", buf); 
+
 	struct dag_order* ord = parse_dag_order_dsl(buf); 
 	if (ord == NULL) {
 		fprintf(stderr, "Failed to parse dag order\n"); 
@@ -56,12 +47,11 @@ struct dag_order* read_dag_dsl() {
 }
 
 // trim back and forward 
+// TODO("should be move to util file")
 char* trim(const char* s) {
-	// trim backward 
-	
 	char *ss = s; 
-
 	size_t len = strlen(ss);
+	// trim backward 
 	for(int i = len - 1; i >= 0; i--) {
 		if (ss[i] == ' ') {
 			ss[i] = '\0'; 
@@ -69,7 +59,8 @@ char* trim(const char* s) {
 	}
 
 	size_t lenlen = strlen(ss);
-       	char* new_start_pos = NULL; 	
+    char* new_start_pos = NULL; 	
+
 	// trim forward 
 	for(int i = 0; i < lenlen; i++) {
 		if (ss[i] == ' ') {
@@ -80,46 +71,99 @@ char* trim(const char* s) {
 	return new_start_pos; 
 }
 
-
+// parse dsl (parse string like "A >> B >> C")
 struct dag_order * parse_dag_order_dsl(const char* dsl) {
 	fprintf(stdout, "parse dag order dsl start\n"); 
-	struct dag_order* result; 
-	char* dsll = dsl; 
+	struct dag_order* result_ord; 
+	char* dsll = dsl; // could be like "A >> B >> C"
 	
-	while(1) { 
-		int pos = strstr(dsll, ">>"); 
-		if (pos == NULL) { // might have only one Task 
-			if (strlen(dsll) <= 0) {
-				fprintf(stderr, "no task definition in dsl: %s\n", dsl); 
-				return NULL; 
-			}
+	char* pos = strstr(dsll, ">>");  // strstr -> finds the position of substr 
+	int index = pos - dsl; 
+	fprintf(stdout, "pos: %c, index: %d\n", pos, index); 
 
-			// lets trim 
-			char* func_name = trim(dsll); 
-			struct dag_order* ord = calloc(1, sizeof(struct dag_order)); 
-			ord->func_name = func_name; 
-			ord->next = NULL; 
-			result = ord;
-			return result; 			
-		}
-
-		size_t size = dsll - pos; 
-		char func_name[64]; // 64byte length of func_name  
-		memcpy(func_name, dsll, size);
-	        func_name[size] = '\0'; 	
-		dsll = func_name;
-
-		struct dag_order* ord = calloc(1, sizeof(struct dag_order)); 	
-		if (ord == NULL) {
-			perror("calloc");
-			return NULL; 
-		}
-
-		ord->func_name = func_name; 
-		ord->next = NULL; 
-		result->next = ord; 
+	if (pos == NULL) { 
+		result_ord = calloc(1, sizeof(struct dag_order)); 
+		handle_single_task(dsl, result_ord);		
+	} else { 
+		result_ord = calloc(1, sizeof(struct dag_order)); 
+		handle_multiple_task(dsl, result_ord); 
 	}
 
 	fprintf(stdout, "Success to parse dag order dsl\n"); 
-	return result; 
+	return result_ord; 
+}
+
+void* handle_single_task(const char* dsl, struct dag_order* ord) { 
+	fprintf(stdout, "handle_single_task called\n"); 
+	if (strlen(dsl) <= 0) {
+		fprintf(stderr, "no task definition in dsl: %s\n", dsl); 
+		return NULL; 
+	}
+
+	// lets trim 
+	char* func_name = trim(dsl); 
+	ord->func_name = strdup(func_name); 
+	ord->next = NULL; 
+	ord->schedule = DAILY;  // first, use DAILY as default. 
+}
+
+void print_all_task(char tasks[][MAX_TASK_NAME_LEN], int count) { 
+	for (int i = 0; i < count; i++) { 
+		char* func_name = tasks[i]; 
+		fprintf(stdout, "[print_all_tasks] func_name: %s\n", func_name); 
+	}
+}
+
+
+// use strtok 
+void* handle_multiple_task(const char* dsl, struct dag_order* ord) { 
+	fprintf(stdout, "handle_multiple_task called\n"); 
+	char tasks[MAX_TASK_COUNT][MAX_TASK_NAME_LEN]; 
+	int count = 0; 
+	char* token = strtok(dsl, ">");
+	while (token != NULL && count < MAX_TASK_COUNT) {
+		while (*token == ' ') { 
+			token ++; 
+		}
+
+		char* end = token + strlen(token) - 1; 
+		while (end > token && *end == ' ') { 
+			*end = '\0';
+			end--; 
+		}
+
+		strncpy(tasks[count], token, MAX_TASK_NAME_LEN - 1);
+		tasks[count][MAX_TASK_NAME_LEN - 1] = '\0';
+
+		count ++; 
+		token = strtok(NULL, ">");
+	}
+
+	fprintf(stdout, "count: %d\n", count); 
+	print_all_task(tasks, count); 
+
+	if (count <= 0) { 
+		return; 
+	}
+
+	struct dag_order* pointer = ord; 
+	pointer->func_name = strdup(trim(tasks[0])); 
+	pointer->next = NULL; 
+	pointer->schedule = DAILY; // first, use DAILY as default 
+ 
+	if (count <= 1) { 
+		return; 
+	}
+
+	for (int i = 1; i < count; i++) { 
+		struct dag_order* next = calloc(1, sizeof(struct dag_order)); 
+		pointer->next = next; 
+		pointer = pointer->next; 
+		
+		pointer->func_name = strdup(trim(tasks[count]));
+		pointer->next = NULL; 
+		pointer->schedule = DAILY; 
+	}
+
+	fprintf(stdout, "finish handle_multiple_task\n"); 
 }

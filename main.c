@@ -40,11 +40,13 @@ int main() {
 	fprintf(stdout, "cli_thread started\n");
 
 
-	struct dag_order* ord = read_dag_dsl(); 
+	struct dag_order* ord = calloc(1, sizeof(struct dag_order)); 
+	ord = read_dag_dsl(); 
 	if (ord == NULL) {
 		fprintf(stderr, "read_dag_dsl has been failed\n");
 		exit(EXIT_FAILURE); 
 	}
+	print_all_tasks(ord); 
 
 	// start scheduler thread 
 	pthread_t sched_thread; 
@@ -61,4 +63,15 @@ int main() {
 
 	fprintf(stdout, "cflow exit\n"); 
 	return 0; 
+}
+
+void print_all_tasks(struct dag_order* ord) { 
+	int count = 0 ; 
+	struct dag_order* p = ord; 
+	while(p != NULL) {
+		char* func_name = p->func_name; 
+		fprintf(stdout, "------------------------ [%d] %s ------------------------ \n", count, func_name); 
+		p = p->next; 
+		count ++; 
+	}
 }

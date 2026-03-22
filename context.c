@@ -3,11 +3,12 @@
  */
 
 // shoule we use file? or just a memory ?
-
+#define _POSIX_C_SOURCE 199309L // CLOCK_REALTIME is POSIX API, so we have to activate POSIX feature macro 
 
 #include<stdio.h>
 #include<stdbool.h>
 #include<memory.h>
+#include<stdint.h>
 #include<unistd.h>
 #include<fcntl.h>
 #include<time.h> // <-- for ctx creation time 

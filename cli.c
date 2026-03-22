@@ -1,34 +1,49 @@
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h> // for EXIT_FAILURE 
+#include <errno.h>
 #include "cli.h"
-#include<unistd.h>
-#include<fcntl.h>
-#include<stdio.h>
-#include<string.h>
-#include<errno.h>
 
 #define BUF_LEN 1024 // no semisolon after #define  
 
-static char* parse_input(char* buf);
+int CLI_INPUT_ERROR = 0; 
+
+static int parse_input(char* input_buf);
 
 void* cli_input_receiver(void *arg) {
-        (void) arg; 
+    (void) arg; 
 
-	char buf[BUF_LEN];
-        read_again: 	
-	memset(&buf, 0, sizeof(buf)); 
+	char input_buf[BUF_LEN];
+    read_again: 	
+	memset(&input_buf, 0, sizeof(input_buf)); 
 	
 	fprintf(stdout, "looping cli input receiver\n"); 
 	while(1) { 
-		int nbytes = read(STDIN_FILENO, buf, BUF_LEN - 1); 
+		errno = 0; 
+		int nbytes = read(STDIN_FILENO, input_buf, BUF_LEN - 1); // receive command 
 		if (nbytes == -1) {
-			if (errno == EINTR) {
+			if (errno == EINTR) { // handle input error situation 
 				goto read_again; 	
+			} else {
+				fprintf(STDIN_FILENO, "invalid input situation: %s\n", strerror(errno)); 
+				CLI_INPUT_ERROR = 1; 
+				break; 
 			}
 		}	
 
-		char* argv = parse_input(buf);
-	       	fprintf(stdout, "argv: %s\n", argv); 	
-		fprintf(stdout, "input: %s\n", buf); 
+		char* command = parse_input(input_buf);
+	    fprintf(stdout, "command: %s\n", command); 	
+		fprintf(stdout, "input_fub: %s\n", input_buf); 
 	} 
+
+	if (CLI_INPUT_ERROR == 1) {
+		fprintf(STDIN_FILENO, "Critical input error situation. exit this process\n"); 
+		exit(EXIT_FAILURE); 	
+	}
+	
+	return; 
 }
 
 
@@ -38,20 +53,19 @@ void run_by_command(char* argv) {
 
 /**
  * ## command ## 
- * 1. run dag 
- * 2. exit dag 
+ * 1. RUN: run existing dag 
+ * 2. EXIT: exit this workflow 
  */ 
-static char* parse_input(char* buf) { 
+static int parse_input(char* input_buf) { 
 	char argv[BUF_LEN]; 
-	char* save; 
-	char* tok = strtok_r(buf, " ", &save); // strtok_r is thread-safe, so use this instead of strtok() 
-	
-	int idx = 0; 
-	while(tok) {
-		argv[idx++] = tok; 
-		tok = strtok_r(NULL, " ", &save); 
+	if (input_buf == "RUN") {
+				// run dag 
+	} else if (input_buf == "EXIT") { 
+				// exit workflow 
+	} else { // no suitable command
+		return -1; 
 	}
 
-	fprintf(stdout, "parse input finish\n"); 
-	return argv;  
+	fprintf(stdout, "parse input. input_buf: %s\n", input_buf); 
+	return 0; 
 }

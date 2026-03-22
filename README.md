@@ -20,3 +20,13 @@ just for fun.
 - - maintain small chunk of data between tasks. 
 - Task 
 - - A single unit of execution -> one function 
+- Log 
+- - Manage Execution log of Task 
+
+
+## build 
+`gcc   -Wall -Wextra -pthread -O2 -g *.c -o cflow`
+
+## execute 
+1) `./cflow`
+2) type `RUN`
