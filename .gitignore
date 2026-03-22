@@ -29,6 +29,12 @@
 # (선택) 헤더도 허용하고 싶으면
 !*.h
 
+# allow .py file for Task management 
+!*.py 
+
+# allow .dsl file for DSL description 
+!*.dsl 
+
 # (선택) README 허용
 !README.md
 
